@@ -17,11 +17,11 @@ class TestBGLST(unittest.TestCase):
         t = np.sort(t)
         duration = max(t) - min(t)
         freq = 1.0/np.random.uniform(0.0, time_range/5)
-        slope = 1.0/np.random.uniform(100, 200)
+        true_slope = 1.0/np.random.uniform(100, 200)
         offset = np.random.uniform(-1, 1)
         sigma = 0.1
         epsilon = np.random.normal(0, sigma, n)
-        y = np.cos(2*np.pi*freq*t) + t*slope + offset + epsilon
+        y = np.cos(2*np.pi*freq*t) + true_slope*t + offset + epsilon
         w = np.ones(n)/sigma**2
         
         # set the prior means and variances of the parameters
