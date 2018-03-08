@@ -2,9 +2,27 @@ import numpy as np
 import scipy.misc
 
 class BGLST():
+    """ Bayesian linear regression with harmonic, offset and trend
+        y = A*sin(2*pi*f*t-tau)+B*sin(2*pi*f*t-tau)+alpha*t+beta+epsilon
+    """
 
     def __init__(self, t, y, w, w_A = 0.0, A_hat = 0.0, w_B = 0.0, B_hat = 0.0, 
                  w_alpha = 0.0, alpha_hat = 0.0, w_beta = 0.0, beta_hat = 0.0):
+        """
+        Args:
+            t (:obj:`array` of :obj:`float`): The array of time moments of the data points
+            y (:obj:`array` of :obj:`float`): The array of y-values of the data points
+            w (:obj:`array` of :obj:`float`): The array of weights of the data points (i.e. the precisions or inverse of the variances)
+            w_A (float): prior weight of A (i.e. the precision or inverse of the variance)
+            A_hat (float): prior mean of A
+            w_B (float): prior weight of B
+            B_hat (float): prior mean of B
+            w_alpha (float): prior weight of alpha
+            alpha_hat (float): prior mean of alpha
+            w_beta (float): prior weight of beta
+            beta_hat (float): prior mean of beta
+        
+        """
         self.t = t
         self.y = y
         self.w = w
@@ -166,6 +184,12 @@ class BGLST():
 
 
     def calc_all(self, freq_start, freq_end, count):
+        """Calculates the probabilistic spectrum for the given range of frequencies
+
+        Returns: (freqs, probs), where
+            freqs is the array of frequencies
+            probs is the corresponding array of unnormalized log probabilities
+        """
         self.freq_start = freq_start
         delta_freq = (freq_end - freq_start) / count
         self.delta = self.two_pi_t * delta_freq
@@ -184,7 +208,27 @@ class BGLST():
         probs -= scipy.misc.logsumexp(probs) + np.log(delta_freq)
         return (freqs, probs)
 
-    def model(self, freq, t = None):
+    def model(self, freq, t = None, w = None, calc_pred_var = False):
+        """Calculates the regression model at given time moments and weights using a given frequency.
+        
+        Args:
+            freq (float): The frequency used in the regression model
+            t (:obj:`array` of :obj:`float`): The array of time moments for which the
+                model values to calculate. If omitted the values are calculated for the
+                time moments of the data.
+            w (:obj:`array` of :obj:`float`): The array of weights corresponding to time moments
+                in t. If omitted the weights of the data points are used. Otherwise must be of equal length to t.
+            calc_pred_var (bool): Whether to calculate the predictive variance
+                
+        Returns: (tau, mean, cov, y_model, loglik, pred_cov), where
+            tau is the time shift in the model
+            mean is the mean vector of the regression coefficients A, B, alpha and beta
+            cov is the covariance matrix of the regression coefficients
+            y_model is the array of predictive means (for a given fixed frequency)
+            loglik is the log likelihood of the data given the model
+            y_cov is the array of predictive variances corresponding to y_model (for a given fixed frequency) or None, if calc_pred_var = False
+        
+        """
         if freq == 0.0:
             ((mu_alpha, mu_beta), (sigma_alpha, sigma_beta), y_model, loglik) = self._linreg()
             return (0.0, (0.0, 0.0, mu_alpha, mu_beta), (0.0, 0.0, sigma_alpha, sigma_beta), y_model, loglik)
@@ -236,11 +280,12 @@ class BGLST():
         term_A_B_1 = sigma_A_alpha*(sigma_B_alpha*sigma_beta-sigma_B_beta*sigma_alpha_beta)
         term_A_B_2 =sigma_A_beta*(sigma_B_beta*sigma_alpha-sigma_B_alpha*sigma_alpha_beta)
         sigma_A_B = (term_A_B_1 + term_A_B_2)/(sigma_alpha*sigma_beta - sigma_alpha_beta**2)
-            
+        
         y_model = np.cos(self.t * 2.0 * np.pi * freq - tau) * mu_A  + np.sin(self.t * 2.0 * np.pi * freq - tau) * mu_B + self.t * mu_alpha + mu_beta
         loglik = self.norm_term_ll - 0.5 * sum(self.w * (self.y - y_model)**2)
         if t is None:
             t = self.t
+            w = self.w
         if np.any(t != self.t):
             y_model = np.cos(t * 2.0 * np.pi * freq - tau) * mu_A  + np.sin(t * 2.0 * np.pi * freq - tau) * mu_B + t * mu_alpha + mu_beta
         mean = np.array([mu_A, mu_B, mu_alpha, mu_beta])
@@ -250,9 +295,36 @@ class BGLST():
             [sigma_A_alpha, sigma_B_alpha, sigma_alpha,      sigma_alpha_beta],
             [sigma_A_beta,  sigma_B_beta,  sigma_alpha_beta, sigma_beta]
             ])
-        return (tau, mean, cov, y_model, loglik)
+        
+        pred_var = None
+        if calc_pred_var:
+            n = len(t)
+            assert(n == len(w))
+            X = np.column_stack((np.cos(t*2.0*np.pi*freq - tau), 
+                                 np.sin(t*2.0*np.pi*freq - tau), 
+                                t, 
+                                np.ones(n)))
+            pred_var = np.ones(n)/w + np.einsum("ij,ij->j",X.T, np.dot(cov, X.T))
+            
+        return (tau, mean, cov, y_model, loglik, pred_var)
         
     def fit(self, tau, freq, A, B, alpha, beta, t = None):
+        """Fit a model with given parameters to the data
+        Args:
+            tau (float): Time shift in the model
+            freq (float): Frequency used in the regression model
+            A, B, alpha, beta (float):  Regression coefficients
+            t (:obj:`array` of :obj:`float`): The array of time moments for which the
+                model values to calculate. If omitted the values are calculated for the
+                time moments of the data.
+            calc_pred_cov (bool): Whether to calculate the predictive covariance
+                
+        Returns: y_model, loglik, where
+            y_model is the predictive mean (for a given fixed frequency)
+            loglik is the log likelihood of the data given the model
+        
+        
+        """
         y_model = np.cos(self.t * 2.0 * np.pi * freq - tau) * A  + np.sin(self.t * 2.0 * np.pi * freq - tau) * B + self.t * alpha + beta
         loglik = self.norm_term_ll - 0.5 * sum(self.w * (self.y - y_model)**2)
         if t is None:

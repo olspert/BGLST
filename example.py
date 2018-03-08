@@ -41,15 +41,20 @@ fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
 
 ax1.scatter(t, y, marker='+', color ='k', lw=0.5)
 t_model = np.linspace(min(t), max(t), 1000)
-tau, mean, cov, y_model, loglik = bglst.model(opt_freq, t_model)
+w_model = np.ones(1000)/sigma**2
+tau, mean, cov, y_model, loglik, pred_var = bglst.model(freq=opt_freq, t=t_model, w=w_model, calc_pred_var=True)
 A = mean[0]
 B = mean[1]
 alpha = mean[2]
 beta = mean[3]
 bic = 2 * loglik - np.log(n) * 5
 t_model = np.linspace(min(t), max(t), 1000)
+std2 = np.sqrt(pred_var)*2.0
 # plot the mean curve of the model
 ax1.plot(t_model, y_model, 'r-')
+# plot 90% confidence interval
+ax1.fill_between(t_model, y_model-std2, y_model+std2, alpha=0.2, facecolor='lightsalmon', interpolate=True)
+
 # plot the linear trend of the model
 ax1.plot(t_model, alpha*t_model + beta, 'r--')
 # plot the true trend
