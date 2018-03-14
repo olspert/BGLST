@@ -53,7 +53,7 @@ std2 = np.sqrt(pred_var)*2.0
 # plot the mean curve of the model
 ax1.plot(t_model, y_model, 'r-')
 # plot 90% confidence interval
-ax1.fill_between(t_model, y_model-std2, y_model+std2, alpha=0.2, facecolor='lightsalmon', interpolate=True)
+ax1.fill_between(t_model, y_model-std2, y_model+std2, alpha=0.8, facecolor='lightsalmon', interpolate=True)
 
 # plot the linear trend of the model
 ax1.plot(t_model, alpha*t_model + beta, 'r--')
