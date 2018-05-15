@@ -208,7 +208,7 @@ class BGLST():
         probs -= scipy.misc.logsumexp(probs) + np.log(delta_freq)
         return (freqs, probs)
 
-    def model(self, freq, t = None, w = None, calc_pred_var = False):
+    def model(self, freq, t = None, w = None, calc_pred_var = False, pred_var_with_obs_noise=False):
         """Calculates the regression model at given time moments and weights using a given frequency.
         
         Args:
@@ -299,12 +299,14 @@ class BGLST():
         pred_var = None
         if calc_pred_var:
             n = len(t)
-            assert(n == len(w))
             X = np.column_stack((np.cos(t*2.0*np.pi*freq - tau), 
                                  np.sin(t*2.0*np.pi*freq - tau), 
                                 t, 
                                 np.ones(n)))
-            pred_var = np.ones(n)/w + np.einsum("ij,ij->j",X.T, np.dot(cov, X.T))
+            pred_var = np.einsum("ij,ij->j",X.T, np.dot(cov, X.T))
+            if pred_var_with_obs_noise:
+                assert(n == len(w))
+                pred_var += np.ones(n)/w
             
         return (tau, mean, cov, y_model, loglik, pred_var)
         
