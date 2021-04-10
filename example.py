@@ -83,3 +83,4 @@ ax2.set_ylabel(r'Power', fontsize=axis_label_fs)
 ax2.set_xlim([freq_start, freq_end])
 
 plt.show()
+
