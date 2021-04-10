@@ -1,5 +1,5 @@
 import numpy as np
-import scipy.misc
+import scipy.special
 
 class BGLST():
     """ Bayesian linear regression with harmonic, offset and trend
@@ -109,7 +109,7 @@ class BGLST():
             Q = -yc * c / cc + self.Y - M * N / 2.0 / K
             if P == 0.0:
                 if Q != 0.0:
-                    print "WARNING: Q=", Q
+                    print("WARNING: Q=", Q)
                 assert(abs(Q) < 1e-8)
                 log_prob = self.norm_term + np.log(2.0 * np.pi**2 / np.sqrt(-cc * K)) + (yc**2/2.0/cc - M**2/4.0/K - self.yy/2.0)
             else:
@@ -125,7 +125,7 @@ class BGLST():
             Q = -ys * s / ss + self.Y - M * N / 2.0 / K
             if P == 0.0:
                 if Q != 0.0:
-                    print "WARNING: Q=", Q
+                    print("WARNING: Q=", Q)
                 log_prob = self.norm_term + np.log(2.0 * np.pi**2 / np.sqrt(-ss * K)) + (ys**2/2.0/ss - M**2/4.0/K - self.yy/2.0)
             else:
                 assert(P < 0)
@@ -141,16 +141,16 @@ class BGLST():
             Q = -yc * c / cc - ys * s / ss + self.Y - M * N / 2.0 / K
             if P == 0.0:
                 if Q != 0.0:
-                    print "WARNING: Q=", Q
+                    print("WARNING: Q=", Q)
                 log_prob = self.norm_term + np.log(2.0 * np.pi**2 / np.sqrt(-cc * ss * K)) + (yc**2/2.0/cc + ys**2/2.0/ss - M**2/4.0/K - self.yy/2.0)
             elif P > 0 and abs(P) < 1e-6:
-                print "ERROR: P=", P
+                print("ERROR: P=", P)
                 if Q != 0.0:
-                    print "WARNING: Q=", Q
+                    print("WARNING: Q=", Q)
                 log_prob = self.norm_term + np.log(2.0 * np.pi**2 / np.sqrt(-cc * ss * K)) + (yc**2/2.0/cc + ys**2/2.0/ss - M**2/4.0/K - self.yy/2.0)
             else:
                 if P > 0:
-                    print "ERROR: P=", P
+                    print("ERROR: P=", P)
                 assert(P < 0)
                 log_prob = self.norm_term + np.log(2.0 * np.pi**2 / np.sqrt(cc * ss * K * P)) + (yc**2/2.0/cc + ys**2/2.0/ss - M**2/4.0/K - Q**2/4.0/P - self.yy/2.0)
         return (log_prob, (tau, ss, cc, ys, yc, st, ct, s, c, K, M, N, P, Q))
@@ -205,7 +205,7 @@ class BGLST():
         for n in np.arange(0, count):
             freqs[n] = freq_start + delta_freq * n
             probs[n] = self.step(n)
-        probs -= scipy.misc.logsumexp(probs) + np.log(delta_freq)
+        probs -= scipy.special.logsumexp(probs) + np.log(delta_freq)
         return (freqs, probs)
 
     def model(self, freq, t = None, w = None, calc_pred_var = False):
